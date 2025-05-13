@@ -178,6 +178,24 @@ const DatasetUpload = ({ onProcessComplete }: DatasetUploadProps) => {
           audio (.wav, .mp3), text (.txt), and visual data (.jpg, .png).
         </div>
         
+        <div className="mb-4">
+          <Button
+            onClick={processData}
+            disabled={processing || uploads.length === 0 || uploads.some(u => u.status === 'uploading')}
+            className="w-full bg-mind-blue-600 hover:bg-mind-blue-700 py-6 text-lg"
+            size="lg"
+          >
+            {processing ? (
+              <>
+                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                Processing Dataset ({Math.round(processingProgress)}%)
+              </>
+            ) : (
+              'Start Dataset Processing'
+            )}
+          </Button>
+        </div>
+        
         <div className="flex flex-col sm:flex-row gap-4">
           <div 
             className={`flex-1 border-2 border-dashed rounded-lg p-6 flex flex-col justify-center items-center
@@ -262,24 +280,6 @@ const DatasetUpload = ({ onProcessComplete }: DatasetUploadProps) => {
                   onClick={clearUploads}
                 >
                   Clear all uploads
-                </Button>
-              )}
-              
-              {uploads.length > 0 && (
-                <Button 
-                  onClick={processData} 
-                  disabled={processing || uploads.some(u => u.status === 'uploading')}
-                  className="w-full mt-3 bg-mind-green-500 hover:bg-mind-green-600"
-                  size="sm"
-                >
-                  {processing ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Processing ({Math.round(processingProgress)}%)
-                    </>
-                  ) : (
-                    'Process Data'
-                  )}
                 </Button>
               )}
             </div>
