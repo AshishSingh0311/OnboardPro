@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -33,48 +32,56 @@ const DatasetUpload = () => {
       });
       return;
     }
-    
+
     setIsUploading(true);
-    
+
     try {
       let dataToProcess = selectedFile;
-      
+
       // If it's an Excel file, convert it to MODMA JSON format first
       if (selectedFile.name.endsWith('.xlsx') || selectedFile.name.endsWith('.xls')) {
         try {
           const modmaData = await convertExcelToModma(selectedFile);
           const jsonBlob = new Blob([JSON.stringify(modmaData)], { type: 'application/json' });
           dataToProcess = new File([jsonBlob], 'converted-excel.json', { type: 'application/json' });
-          
+
           toast.success("Excel File Converted", {
             description: "Successfully converted Excel file to MODMA format."
           });
-        } catch (error) {
+        } catch (convertError) {
+          console.error("Excel conversion error:", convertError);
           toast.error("Conversion Error", {
-            description: "Failed to convert Excel file to MODMA format."
+            description: `Failed to convert Excel file to MODMA format: ${convertError instanceof Error ? convertError.message : 'Unknown error'}`
           });
           setIsUploading(false);
           return;
         }
       }
-      
+
       // Process the data with the selected fusion type
-      const result = await processDataset(dataToProcess, fusionType);
-      setProcessingResult(result);
-      
-      if (result.error) {
+      try {
+        const result = await processDataset(dataToProcess, fusionType);
+        setProcessingResult(result);
+
+        if (result.error) {
+          toast.error("Processing Error", {
+            description: result.error
+          });
+        } else {
+          toast.success("Processing Complete", {
+            description: "Dataset has been successfully processed."
+          });
+        }
+      } catch (processError) {
+        console.error("Error during dataset processing:", processError);
         toast.error("Processing Error", {
-          description: result.error
-        });
-      } else {
-        toast.success("Processing Complete", {
-          description: "Dataset has been successfully processed."
+          description: `An error occurred during dataset processing: ${processError instanceof Error ? processError.message : 'Unknown error'}`
         });
       }
     } catch (error) {
       console.error("Error processing dataset:", error);
-      toast.error("Processing Error", {
-        description: "An unexpected error occurred during processing."
+      toast.error("Unexpected Error", {
+        description: `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`
       });
     } finally {
       setIsUploading(false);
@@ -82,13 +89,25 @@ const DatasetUpload = () => {
   };
 
   const handleDownloadResults = () => {
-    if (!processingResult) return;
-    
+    if (!processingResult) {
+      toast.error("No Results Available", {
+        description: "Please process a dataset first."
+      });
+      return;
+    }
+
+    if (processingResult.error) {
+      toast.error("Cannot Download", {
+        description: "There was an error during processing, cannot download results."
+      });
+      return;
+    }
+
     // Create a JSON blob and download it
     const jsonData = JSON.stringify(processingResult, null, 2);
     const blob = new Blob([jsonData], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
-    
+
     const a = document.createElement('a');
     a.href = url;
     a.download = 'mental-health-analysis-results.json';
@@ -96,7 +115,7 @@ const DatasetUpload = () => {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    
+
     toast.success("Results Downloaded", {
       description: "Analysis results have been downloaded as JSON."
     });
@@ -110,11 +129,11 @@ const DatasetUpload = () => {
       });
     } catch (error) {
       toast.error("Download Failed", {
-        description: "Failed to generate the sample dataset."
+        description: `Failed to generate the sample dataset: ${error instanceof Error ? error.message : 'Unknown error'}`
       });
     }
   };
-  
+
   const handleDownloadExcelTemplate = () => {
     try {
       downloadExcelTemplate();
@@ -123,7 +142,7 @@ const DatasetUpload = () => {
       });
     } catch (error) {
       toast.error("Download Failed", {
-        description: "Failed to generate the Excel template."
+        description: `Failed to generate the Excel template: ${error instanceof Error ? error.message : 'Unknown error'}`
       });
     }
   };
@@ -170,7 +189,7 @@ const DatasetUpload = () => {
                 onChange={handleFileSelect}
               />
             </div>
-            
+
             <div className="flex flex-wrap gap-2 mt-3 mb-3">
               <Button 
                 variant="outline"
@@ -191,7 +210,7 @@ const DatasetUpload = () => {
                 Excel Template
               </Button>
             </div>
-            
+
             {/* Fusion Type Selector */}
             <div className="mt-3 mb-3">
               <label className="text-sm font-medium">Fusion Method:</label>
@@ -222,7 +241,7 @@ const DatasetUpload = () => {
                 </Button>
               </div>
             </div>
-            
+
             <Button 
               onClick={handleUpload}
               disabled={!selectedFile || isUploading}
@@ -241,7 +260,7 @@ const DatasetUpload = () => {
               )}
             </Button>
           </div>
-          
+
           <div className="w-full sm:w-1/2 bg-gray-50 p-4 rounded-md">
             <h4 className="font-medium text-sm mb-2">Processing Algorithm</h4>
             <ol className="text-xs space-y-1 text-muted-foreground list-decimal list-inside">
@@ -252,7 +271,7 @@ const DatasetUpload = () => {
               <li>Generate predictions with hybrid model</li>
               <li>Explain results with SHAP</li>
             </ol>
-            
+
             {processingResult && !processingResult.error && (
               <Button
                 variant="outline"

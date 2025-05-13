@@ -36,10 +36,11 @@ export const processDataset = async (
   file: File,
   fusionType: 'Early' | 'Late' | 'Attention'
 ): Promise<ProcessingResult> => {
-  // Initialize TensorFlow.js
-  await initTensorFlow();
-  
-  return new Promise((resolve) => {
+  try {
+    // Initialize TensorFlow.js
+    await initTensorFlow();
+    
+    return new Promise((resolve, reject) => {
     // Start processing
     console.log(`Starting dataset processing with ${fusionType} fusion strategy...`);
     console.time('processing-time');
@@ -49,6 +50,10 @@ export const processDataset = async (
       const reader = new FileReader();
       
       reader.onload = async (event) => {
+        if (!event.target?.result) {
+          reject(new Error("Failed to read file"));
+          return;
+        }
         try {
           let data;
           
