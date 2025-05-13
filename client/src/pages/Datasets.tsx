@@ -14,10 +14,13 @@ import {
   Download,
   Brain,
   Waves,
-  Wand2
+  Wand2,
+  FileDown,
+  FileUp
 } from 'lucide-react';
 import DatasetUpload from '@/components/dashboard/DatasetUpload';
 import { runFullAnalysis } from '@/services/mockDataService';
+import { downloadSampleDatasets } from '@/services/sampleDataGenerator';
 
 const Datasets = () => {
   const [isProcessing, setIsProcessing] = useState(false);
@@ -147,6 +150,36 @@ const Datasets = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
+              <div className="mb-6">
+                <Button
+                  onClick={() => {
+                    toast.info("Generating Sample Datasets", {
+                      description: "Preparing EEG, audio, and text samples for testing."
+                    });
+                    
+                    try {
+                      downloadSampleDatasets();
+                      
+                      toast.success("Samples Generated", {
+                        description: "Sample datasets have been downloaded to your device."
+                      });
+                    } catch (error) {
+                      toast.error("Generation Failed", {
+                        description: "Failed to generate sample datasets. Please try again."
+                      });
+                    }
+                  }}
+                  className="w-full flex items-center justify-center gap-2 bg-mind-blue-600 hover:bg-mind-blue-700 mb-4"
+                  size="lg"
+                >
+                  <FileDown className="h-5 w-5" />
+                  Generate & Download Test Samples
+                </Button>
+                <p className="text-xs text-center text-muted-foreground mb-6">
+                  This will generate synthetic EEG, audio, and text files to test the system
+                </p>
+              </div>
+              
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {[
                   {
@@ -192,11 +225,42 @@ const Datasets = () => {
                         <div>Modalities: {dataset.modalityCount}</div>
                       </div>
                       <div className="flex gap-2">
-                        <Button variant="outline" size="sm" className="flex items-center gap-1">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="flex items-center gap-1"
+                          onClick={() => {
+                            toast.info("Generating Sample", {
+                              description: `Preparing ${dataset.name.toLowerCase()} files...`
+                            });
+                            
+                            try {
+                              downloadSampleDatasets();
+                              
+                              toast.success("Sample Downloaded", {
+                                description: `${dataset.name} has been downloaded to your device.`
+                              });
+                            } catch (error) {
+                              toast.error("Download Failed", {
+                                description: "Failed to generate sample dataset."
+                              });
+                            }
+                          }}
+                        >
                           <Download className="h-4 w-4" />
                           Download
                         </Button>
-                        <Button size="sm" className="flex items-center gap-1">
+                        <Button 
+                          size="sm" 
+                          className="flex items-center gap-1"
+                          onClick={() => {
+                            toast.success("Sample Loaded", {
+                              description: `${dataset.name} has been loaded for processing.`
+                            });
+                            // Auto-trigger processing after 1 second
+                            setTimeout(() => handleProcessDataset(), 1000);
+                          }}
+                        >
                           <Play className="h-4 w-4" />
                           Use
                         </Button>
