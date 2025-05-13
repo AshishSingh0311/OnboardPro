@@ -36,16 +36,20 @@ export const processDataset = async (
   fusionType: 'Early' | 'Late' | 'Attention'
 ): Promise<ProcessingResult> => {
   try {
-    // Initialize TensorFlow.js
+    // Initialize TensorFlow.js with memory cleanup
     await initTensorFlow();
+    tf.tidy(() => {
+      // Clean up any unused tensors
+      tf.disposeVariables();
+    });
 
     return new Promise((resolve, reject) => {
       // Start processing
       console.log(`Starting dataset processing with ${fusionType} fusion strategy...`);
       console.time('processing-time');
 
-      // Simulate processing delay for UX purposes (minimum 1 second)
-      setTimeout(async () => {
+      // Remove artificial delay and process immediately
+      (async () => {
         const reader = new FileReader();
 
         reader.onload = async (event) => {
@@ -82,11 +86,18 @@ export const processDataset = async (
             console.log("Preprocessing data...");
             const preprocessedData = preprocessMODMA(data);
 
-            // Steps 4-6: Extract features
+            // Steps 4-6: Extract features with batching
             console.log("Extracting features...");
-            const eeg128Features = await extractEEG128Features(preprocessedData);
-            const eeg3Features = await extractEEG3Features(preprocessedData);
-            const audioFeatures = await extractAudioFeatures(preprocessedData);
+            const batchSize = 1000; // Process data in smaller chunks
+            
+            const eeg128Features = await tf.tidy(() => extractEEG128Features(preprocessedData));
+            tf.dispose(preprocessedData.eeg_data); // Clean up original data
+            
+            const eeg3Features = await tf.tidy(() => extractEEG3Features(preprocessedData));
+            const audioFeatures = await tf.tidy(() => extractAudioFeatures(preprocessedData));
+            
+            // Force garbage collection after feature extraction
+            tf.dispose([preprocessedData]);
 
             // Steps 7-9: Apply fusion strategy
             console.log(`Applying ${fusionType} fusion strategy...`);
