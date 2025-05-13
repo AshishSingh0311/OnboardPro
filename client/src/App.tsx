@@ -8,6 +8,7 @@ import Analysis from "./pages/Analysis";
 import Recommendations from "./pages/Recommendations";
 import Settings from "./pages/Settings";
 import Models from "./pages/Models";
+import Datasets from "./pages/Datasets";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -22,6 +23,7 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route path="/analysis" element={<Analysis />} />
           <Route path="/recommendations" element={<Recommendations />} />
+          <Route path="/datasets" element={<Datasets />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/models" element={<Models />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

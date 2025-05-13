@@ -15,7 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/components/ui/sonner';
 import { runFullAnalysis } from '@/services/mockDataService';
 import { initTensorFlow } from '@/lib/tensorflow';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Database } from 'lucide-react';
 
 const Index = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -78,6 +78,18 @@ const Index = () => {
           ) : (
             "Run New Analysis"
           )}
+        </Button>
+      </div>
+      
+      {/* Large prominent button for starting dataset processing */}
+      <div className="mb-8">
+        <Button
+          onClick={() => window.location.href = "/datasets"}
+          className="w-full flex items-center justify-center gap-2 bg-mind-green-600 hover:bg-mind-green-700 py-8 text-xl font-semibold"
+          size="lg"
+        >
+          <Database className="h-6 w-6" />
+          Start Dataset Processing
         </Button>
       </div>
 
