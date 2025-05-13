@@ -1,0 +1,7 @@
+modules = ["nodejs-20"]
+[nix]
+packages = ["unzipNLS"]
+
+[[ports]]
+localPort = 8080
+externalPort = 80
