@@ -1,4 +1,3 @@
-
 import { ProcessingResult } from '@/types/dataProcessing';
 import { checkDataFormat, checkDataQuality } from '@/services/dataValidationService';
 import { preprocessMODMA } from '@/services/dataPreprocessingService';
@@ -15,12 +14,12 @@ const initTensorFlow = async () => {
     // Try to use WebGL backend for better performance
     await tf.setBackend('webgl');
     console.log("Using TensorFlow.js backend:", tf.getBackend());
-    
+
     // Enable debug mode in development
     if (process.env.NODE_ENV !== 'production') {
       tf.enableDebugMode();
     }
-    
+
     // Print version info
     console.log("TensorFlow.js version:", tf.version.tfjs);
   } catch (error) {
@@ -39,16 +38,16 @@ export const processDataset = async (
   try {
     // Initialize TensorFlow.js
     await initTensorFlow();
-    
+
     return new Promise((resolve, reject) => {
     // Start processing
     console.log(`Starting dataset processing with ${fusionType} fusion strategy...`);
     console.time('processing-time');
-    
+
     // Simulate processing delay for UX purposes (minimum 1 second)
     setTimeout(async () => {
       const reader = new FileReader();
-      
+
       reader.onload = async (event) => {
         if (!event.target?.result) {
           reject(new Error("Failed to read file"));
@@ -56,7 +55,7 @@ export const processDataset = async (
         }
         try {
           let data;
-          
+
           // Parse the uploaded file
           try {
             data = JSON.parse(event.target?.result as string);
@@ -65,30 +64,30 @@ export const processDataset = async (
             resolve({ error: "Incorrect Data Format" });
             return;
           }
-          
+
           // Step 1-2: Data format and quality checks
           console.log("Validating data format...");
           if (!checkDataFormat(data)) {
             resolve({ error: "Incorrect Data Format" });
             return;
           }
-          
+
           console.log("Checking data quality...");
           if (!checkDataQuality(data)) {
             resolve({ error: "Data is not compliant" });
             return;
           }
-          
+
           // Step 3: Preprocess data
           console.log("Preprocessing data...");
           const preprocessedData = preprocessMODMA(data);
-          
+
           // Steps 4-6: Extract features
           console.log("Extracting features...");
           const eeg128Features = await extractEEG128Features(preprocessedData);
           const eeg3Features = await extractEEG3Features(preprocessedData);
           const audioFeatures = await extractAudioFeatures(preprocessedData);
-          
+
           // Steps 7-9: Apply fusion strategy
           console.log(`Applying ${fusionType} fusion strategy...`);
           const fusedFeatures = await applyFusionStrategy(
@@ -97,19 +96,19 @@ export const processDataset = async (
             eeg3Features,
             audioFeatures
           );
-          
+
           // Step 10: Make prediction
           console.log("Making predictions with hybrid model...");
           const prediction = await predictWithHybridModel(fusedFeatures);
-          
+
           // Step 11: Generate explanation
           console.log("Generating explanations...");
           const explanation = explainWithSHAP(prediction);
-          
+
           // Step 12: Generate model performance metrics
           console.log("Generating model performance metrics...");
           const modelPerformance = generateModelPerformanceMetrics();
-          
+
           // Step 13: Store and return results
           console.log("Finalizing results...");
           const results = {
@@ -123,7 +122,7 @@ export const processDataset = async (
             fusionType,
             modelPerformance
           };
-          
+
           console.timeEnd('processing-time');
           resolve(results);
         } catch (error) {
@@ -131,11 +130,11 @@ export const processDataset = async (
           resolve({ error: "Error processing dataset" });
         }
       };
-      
+
       reader.onerror = () => {
         resolve({ error: "Error reading file" });
       };
-      
+
       reader.readAsText(file);
     }, 1000); // Ensure minimum processing time for better UX
   });
