@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import * as tf from '@tensorflow/tfjs';
 import DashboardLayout from '@/components/DashboardLayout';
 import AnalysisSummaryCard from '@/components/dashboard/AnalysisSummaryCard';
 import EEGVisualization from '@/components/dashboard/EEGVisualization';
@@ -14,7 +15,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/components/ui/sonner';
 import { runFullAnalysis } from '@/services/mockDataService';
-import { initTensorFlow } from '@/lib/tensorflow';
+import { initializeTensorFlow } from '@/lib/tensorflow';
 import { Loader2, Database } from 'lucide-react';
 
 const Index = () => {
@@ -42,13 +43,13 @@ const Index = () => {
   useEffect(() => {
     // Initialize TensorFlow.js
     const initTF = async () => {
-      const result = await initTensorFlow();
-      if (result.success) {
+      try {
+        await initializeTensorFlow();
         setTfInitialized(true);
         toast.success("TensorFlow.js Initialized", {
-          description: `Using backend: ${result.backend}`
+          description: `Using backend: ${tf.getBackend()}`
         });
-      } else {
+      } catch (error) {
         toast.error("TensorFlow.js Initialization Failed", {
           description: "Using fallback processing methods."
         });
