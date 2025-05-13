@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Toaster } from "@radix-ui/react-toast";
+import { Toast, ToastProvider } from "@radix-ui/react-toast";
 import { TooltipProvider } from "@radix-ui/react-tooltip"; 
 import { Toaster as Sonner } from "sonner";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -16,21 +16,22 @@ const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/analysis" element={<Analysis />} />
-          <Route path="/recommendations" element={<Recommendations />} />
-          <Route path="/settings" element={<Settings />} />
-          <Route path="/models" element={<Models />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
+    <ToastProvider>
+      <TooltipProvider>
+        <Sonner />
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/analysis" element={<Analysis />} />
+            <Route path="/recommendations" element={<Recommendations />} />
+            <Route path="/settings" element={<Settings />} />
+            <Route path="/models" element={<Models />} />
+            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+      </TooltipProvider>
+    </ToastProvider>
   </QueryClientProvider>
 );
 
