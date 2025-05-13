@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { toast } from '@/components/ui/sonner';
+import { toast } from 'sonner';
 import { UploadCloud, FileText, Download, HelpCircle, FileSpreadsheet } from "lucide-react";
 import { processDataset } from '@/services/dataProcessingService';
 import { ProcessingResult } from '@/types/dataProcessing';
@@ -11,7 +11,7 @@ import {
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "@/components/ui/tooltip";
+} from "@radix-ui/react-tooltip";
 
 const DatasetUpload = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
