@@ -4,10 +4,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { toast } from '@/components/ui/use-toast';
+import { toast } from '@/components/ui/sonner';
+import { Loader2 } from 'lucide-react';
 import { getMockModelOutput, getMockRecommendations } from '@/services/mockDataService';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
          RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from 'recharts';
+import { formatPercentage, getSeverityLabel, getUrgencyLabel } from '@/lib/utils';
 
 const Recommendations = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -23,8 +25,7 @@ const Recommendations = () => {
       setRecommendations(getMockRecommendations(newModelOutput));
       setIsLoading(false);
       
-      toast({
-        title: "Recommendations Updated",
+      toast.success("Recommendations Updated", {
         description: "New mental health recommendations generated based on latest analysis.",
       });
     }, 1500);
@@ -65,7 +66,7 @@ const Recommendations = () => {
         >
           {isLoading ? (
             <>
-              <span className="animate-spin mr-2">⟳</span>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               Generating...
             </>
           ) : (
@@ -81,15 +82,14 @@ const Recommendations = () => {
               <CardTitle className="flex justify-between items-center">
                 <span>Diagnosis Summary</span>
                 <Badge className="ml-2" variant={modelOutput.severity < 5 ? "outline" : "destructive"}>
-                  {modelOutput.severity < 3 ? "Mild" : 
-                   modelOutput.severity < 7 ? "Moderate" : "Severe"}
+                  {getSeverityLabel(modelOutput.severity)}
                 </Badge>
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-xl font-medium mb-2">{modelOutput.prediction.label}</div>
               <div className="text-muted-foreground mb-4">
-                Condition detected based on multimodal data analysis with {(modelOutput.confidence * 100).toFixed(1)}% confidence.
+                Condition detected based on multimodal data analysis with {formatPercentage(modelOutput.confidence)} confidence.
               </div>
               
               <div className="bg-blue-50 border border-blue-100 rounded-md p-4 mb-4">
@@ -131,7 +131,7 @@ const Recommendations = () => {
                       <div key={idx} className="bg-gray-50 p-3 rounded-md flex justify-between items-center">
                         <span className="capitalize">{feature.replace(/_/g, ' ')}</span>
                         <Badge variant="secondary" className="ml-2">
-                          {(Number(importance) * 100).toFixed(0)}% impact
+                          {formatPercentage(Number(importance), 0)} impact
                         </Badge>
                       </div>
                   ))}
@@ -204,19 +204,18 @@ const Recommendations = () => {
                       <div className="flex justify-between items-start mb-2">
                         <h3 className="font-medium">{therapy.type}</h3>
                         <Badge variant="secondary">
-                          {(therapy.confidence * 100).toFixed(0)}% match
+                          {formatPercentage(therapy.confidence, 0)} match
                         </Badge>
                       </div>
                       <p className="text-muted-foreground text-sm">{therapy.description}</p>
                       
-                      {idx === 0 && (
+                      {idx === 0 && therapy.expectedBenefits && (
                         <div className="mt-3 bg-gray-50 p-3 rounded-md text-sm">
                           <span className="font-medium block mb-1">Expected Benefits</span>
                           <ul className="list-disc list-inside space-y-1 text-muted-foreground">
-                            <li>Reduction in primary symptom severity</li>
-                            <li>Development of adaptive coping strategies</li>
-                            <li>Improved emotional regulation capacity</li>
-                            <li>Enhanced resilience to stressors</li>
+                            {therapy.expectedBenefits.map((benefit, i) => (
+                              <li key={i}>{benefit}</li>
+                            ))}
                           </ul>
                         </div>
                       )}
@@ -275,22 +274,14 @@ const Recommendations = () => {
                         <Badge 
                           variant={specialist.urgency < 3 ? "outline" : specialist.urgency < 7 ? "secondary" : "destructive"}
                         >
-                          {specialist.urgency < 3 ? "Low" : specialist.urgency < 7 ? "Moderate" : "High"} Urgency
+                          {getUrgencyLabel(specialist.urgency)} priority
                         </Badge>
                       </div>
-                      <p className="text-muted-foreground text-sm">{specialist.reason}</p>
-                      
-                      {idx === 0 && (
-                        <div className="mt-3 bg-gray-50 p-3 rounded-md text-sm">
-                          <span className="font-medium block mb-1">What to Expect</span>
-                          <ul className="list-disc list-inside space-y-1 text-muted-foreground">
-                            <li>Initial assessment and evaluation</li>
-                            <li>Development of a personalized treatment plan</li>
-                            <li>Regular follow-ups to monitor progress</li>
-                            <li>Coordination with other healthcare providers if needed</li>
-                          </ul>
-                        </div>
-                      )}
+                      <p className="text-muted-foreground text-sm mb-2">{specialist.description}</p>
+                      <div className="bg-gray-50 p-3 rounded-md text-sm">
+                        <span className="font-medium block mb-1">Rationale</span>
+                        <p className="text-muted-foreground">{specialist.rationale}</p>
+                      </div>
                     </div>
                   ))}
                 </CardContent>
@@ -305,7 +296,6 @@ const Recommendations = () => {
                 <CardContent>
                   <ResponsiveContainer width="100%" height={300}>
                     <BarChart
-                      layout="vertical"
                       data={specialistData}
                       margin={{
                         top: 5,
@@ -314,38 +304,26 @@ const Recommendations = () => {
                         bottom: 5,
                       }}
                     >
-                      <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-                      <XAxis 
-                        type="number" 
-                        domain={[0, 10]} 
-                        ticks={[0, 2, 4, 6, 8, 10]} 
-                        label={{ value: 'Urgency Level', position: 'insideBottom', offset: -5 }} 
-                      />
-                      <YAxis type="category" dataKey="name" />
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="name" />
+                      <YAxis domain={[0, 10]} label={{ value: 'Urgency (0-10)', angle: -90, position: 'insideLeft' }} />
                       <Tooltip />
                       <Legend />
                       <Bar 
                         dataKey="value" 
-                        name="Urgency Level" 
-                        fill="#f39c12"
-                        radius={[0, 4, 4, 0]} 
+                        name="Urgency" 
+                        fill="#e74c3c" 
+                        background={{ fill: '#eee' }}
                       />
                     </BarChart>
                   </ResponsiveContainer>
                   <div className="mt-4 text-xs text-muted-foreground">
-                    <span className="block font-medium mb-1">Urgency Scale:</span>
-                    <div className="flex items-center space-x-2 mb-1">
-                      <span className="w-3 h-3 inline-block bg-green-500 rounded-full"></span>
-                      <span>1-3: Routine follow-up (within weeks)</span>
-                    </div>
-                    <div className="flex items-center space-x-2 mb-1">
-                      <span className="w-3 h-3 inline-block bg-amber-500 rounded-full"></span>
-                      <span>4-7: Prompt attention (within days)</span>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <span className="w-3 h-3 inline-block bg-red-500 rounded-full"></span>
-                      <span>8-10: Immediate care recommended</span>
-                    </div>
+                    <p>Urgency rating scale:</p>
+                    <ul className="list-disc list-inside mt-1">
+                      <li>0-3: Low priority (routine follow-up)</li>
+                      <li>4-7: Medium priority (within weeks)</li>
+                      <li>8-10: High priority (immediate attention)</li>
+                    </ul>
                   </div>
                 </CardContent>
               </Card>
@@ -354,117 +332,58 @@ const Recommendations = () => {
         </TabsContent>
         
         <TabsContent value="wellness" className="mt-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {recommendations.wellnessTips.map((tip, idx) => (
-              <Card key={idx}>
-                <CardHeader className="pb-2">
-                  <CardTitle className="flex justify-between items-center">
-                    <span>{tip.title}</span>
-                    <Badge variant="outline" className="text-xs">
-                      {(tip.relevance * 100).toFixed(0)}% relevance
-                    </Badge>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-muted-foreground mb-4">{tip.content}</p>
-                  
-                  <div className="bg-gray-50 p-3 rounded-md">
-                    <h4 className="text-sm font-medium mb-2">Implementation Suggestions</h4>
-                    {tip.title === "Daily Mindfulness" && (
-                      <ul className="list-disc list-inside text-sm text-gray-600 space-y-1">
-                        <li>Start with 5-minute sessions and gradually increase</li>
-                        <li>Use guided meditation apps for structure</li>
-                        <li>Practice at the same time each day to build habit</li>
-                        <li>Focus on breath awareness as a foundation</li>
-                      </ul>
-                    )}
-                    
-                    {tip.title === "Sleep Hygiene" && (
-                      <ul className="list-disc list-inside text-sm text-gray-600 space-y-1">
-                        <li>Maintain consistent sleep and wake times</li>
-                        <li>Create a relaxing bedtime routine</li>
-                        <li>Keep bedroom cool, dark, and quiet</li>
-                        <li>Avoid screens 1-2 hours before bedtime</li>
-                      </ul>
-                    )}
-                    
-                    {tip.title === "Physical Activity" && (
-                      <ul className="list-disc list-inside text-sm text-gray-600 space-y-1">
-                        <li>Choose activities you enjoy to maintain consistency</li>
-                        <li>Start with short sessions and gradually increase</li>
-                        <li>Include both aerobic and strength training</li>
-                        <li>Schedule workouts at consistent times</li>
-                      </ul>
-                    )}
-                    
-                    {tip.title === "Social Connection" && (
-                      <ul className="list-disc list-inside text-sm text-gray-600 space-y-1">
-                        <li>Schedule regular check-ins with supportive people</li>
-                        <li>Join groups based on interests or hobbies</li>
-                        <li>Practice active listening in conversations</li>
-                        <li>Consider volunteering to meet like-minded people</li>
-                      </ul>
-                    )}
-                    
-                    {tip.title === "Nature Exposure" && (
-                      <ul className="list-disc list-inside text-sm text-gray-600 space-y-1">
-                        <li>Spend at least 20 minutes outdoors daily</li>
-                        <li>Visit local parks or natural areas weekly</li>
-                        <li>Incorporate plants into your living space</li>
-                        <li>Practice mindfulness while in natural settings</li>
-                      </ul>
-                    )}
+          <Card>
+            <CardHeader>
+              <CardTitle>Personalized Wellness Tips</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {recommendations.wellnessTips.map((tip, idx) => (
+                  <div key={idx} className="bg-white border rounded-md p-4 shadow-sm">
+                    <div className="flex items-center mb-2">
+                      <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center mr-2">
+                        <span className="material-icons text-mind-blue-500">{tip.icon}</span>
+                      </div>
+                      <h3 className="font-medium">{tip.title}</h3>
+                    </div>
+                    <p className="text-muted-foreground text-sm">{tip.description}</p>
                   </div>
-                </CardContent>
-              </Card>
-            ))}
-            
-            <Card className="md:col-span-2">
-              <CardHeader className="pb-2">
-                <CardTitle>Integrated Wellness Approach</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="mb-4">
-                  Mental health is best supported through an integrated approach addressing multiple dimensions of wellness. 
-                  The recommendations above are designed to work together as a comprehensive system.
+                ))}
+              </div>
+              
+              <div className="mt-6 bg-blue-50 p-4 rounded-md border border-blue-100">
+                <h3 className="text-md font-medium mb-2 text-blue-800">Implementation Strategy</h3>
+                <p className="text-sm text-blue-700 mb-3">
+                  For optimal results, we recommend gradually integrating these wellness practices:
                 </p>
-                
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="bg-blue-50 p-4 rounded-md">
-                    <h3 className="text-blue-800 font-medium mb-2">Biological</h3>
-                    <ul className="list-disc list-inside text-sm text-blue-700 space-y-1">
-                      <li>Regular physical activity</li>
-                      <li>Nutritious diet</li>
-                      <li>Consistent sleep schedule</li>
-                      <li>Limited substance use</li>
-                    </ul>
-                  </div>
-                  
-                  <div className="bg-green-50 p-4 rounded-md">
-                    <h3 className="text-green-800 font-medium mb-2">Psychological</h3>
-                    <ul className="list-disc list-inside text-sm text-green-700 space-y-1">
-                      <li>Mindfulness practices</li>
-                      <li>Stress management techniques</li>
-                      <li>Cognitive reframing</li>
-                      <li>Emotional regulation skills</li>
-                    </ul>
-                  </div>
-                  
-                  <div className="bg-amber-50 p-4 rounded-md">
-                    <h3 className="text-amber-800 font-medium mb-2">Social</h3>
-                    <ul className="list-disc list-inside text-sm text-amber-700 space-y-1">
-                      <li>Meaningful relationships</li>
-                      <li>Community involvement</li>
-                      <li>Communication skills</li>
-                      <li>Boundary setting</li>
-                    </ul>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+                <ol className="list-decimal list-inside text-sm text-blue-700 space-y-2">
+                  <li>Start with one practice that feels most manageable</li>
+                  <li>Aim for consistency rather than duration or intensity</li>
+                  <li>Track your progress using the wellness assessment tool</li>
+                  <li>Add additional practices every 1-2 weeks</li>
+                  <li>Consider working with a wellness coach for accountability</li>
+                </ol>
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
+      
+      <div className="mt-6 bg-gray-50 p-4 rounded-md">
+        <div className="flex items-start">
+          <div className="flex-shrink-0 bg-blue-100 rounded-full p-1 mr-3">
+            <span className="material-icons text-blue-500">info</span>
+          </div>
+          <div className="text-sm">
+            <h3 className="font-medium mb-1">About These Recommendations</h3>
+            <p className="text-muted-foreground">
+              These recommendations are generated by our AI system based on patterns detected in your multimodal data. 
+              They are intended to supplement, not replace, professional clinical judgment. Always consult with qualified 
+              healthcare providers before making significant changes to treatment approaches.
+            </p>
+          </div>
+        </div>
+      </div>
     </DashboardLayout>
   );
 };

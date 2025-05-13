@@ -1,133 +1,141 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { cn } from '@/lib/utils';
 import { 
   Home, 
-  BarChart, 
-  ListChecks, 
-  Settings, 
+  BarChart2, 
+  Lightbulb, 
   Database, 
-  Brain,
-  HelpCircle,
-  GitBranch,
-  LogOut
+  Brain, 
+  Settings, 
+  Menu, 
+  Search, 
+  Bell, 
+  HelpCircle 
 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
 }
 
 const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
-  const currentPath = location.pathname;
   
-  const isActivePath = (path: string) => {
-    if (path === '/' && currentPath === '/') {
-      return true;
-    }
-    if (path !== '/' && currentPath.startsWith(path)) {
-      return true;
-    }
-    return false;
+  const NavItem = ({ href, icon, children }: { href: string; icon: React.ReactNode; children: React.ReactNode }) => {
+    const isActive = location.pathname === href;
+    
+    return (
+      <Link 
+        to={href}
+        className={cn(
+          "flex items-center px-3 py-2 text-sm font-medium rounded-md",
+          isActive 
+            ? "bg-mind-blue-50 text-mind-blue-700" 
+            : "text-gray-700 hover:bg-gray-50"
+        )}
+      >
+        <div className={cn(
+          "mr-3", 
+          isActive ? "text-mind-blue-500" : "text-gray-500"
+        )}>
+          {icon}
+        </div>
+        {children}
+      </Link>
+    );
   };
-  
-  const navigationLinks = [
-    { name: 'Dashboard', path: '/', icon: <Home className="h-5 w-5" /> },
-    { name: 'Analysis', path: '/analysis', icon: <BarChart className="h-5 w-5" /> },
-    { name: 'Recommendations', path: '/recommendations', icon: <ListChecks className="h-5 w-5" /> },
-    { name: 'Models', path: '/models', icon: <Brain className="h-5 w-5" /> },
-    { name: 'Settings', path: '/settings', icon: <Settings className="h-5 w-5" /> },
-  ];
-  
-  const secondaryLinks = [
-    { name: 'Documentation', path: '/docs', icon: <HelpCircle className="h-5 w-5" /> },
-    { name: 'API', path: '/api', icon: <GitBranch className="h-5 w-5" /> },
-  ];
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex h-screen overflow-hidden">
       {/* Sidebar */}
-      <div className="hidden md:flex flex-col w-64 border-r border-gray-200 bg-white">
-        <div className="p-4 border-b">
-          <div className="flex items-center justify-center">
-            <Brain className="h-8 w-8 text-blue-600 mr-2" />
-            <h1 className="text-xl font-bold text-gray-900">MindBloom AI</h1>
+      <div 
+        className={cn(
+          "fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-gray-200 transition-transform duration-300 md:translate-x-0 md:static md:flex md:flex-shrink-0",
+          sidebarOpen ? "translate-x-0" : "-translate-x-full"
+        )}
+      >
+        <div className="flex flex-col w-64">
+          <div className="flex items-center h-16 px-4 border-b border-gray-200">
+            <h1 className="text-xl font-semibold text-mind-blue-700">MindBloom AI</h1>
           </div>
-        </div>
-        
-        <div className="flex-1 overflow-y-auto py-4 px-3">
-          <nav className="space-y-1">
-            {navigationLinks.map((link) => (
-              <Link
-                key={link.path}
-                to={link.path}
-                className={`flex items-center px-4 py-3 text-sm font-medium rounded-md ${
-                  isActivePath(link.path)
-                    ? 'bg-blue-50 text-blue-700'
-                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                }`}
-              >
-                <span className={`mr-3 ${isActivePath(link.path) ? 'text-blue-500' : 'text-gray-400'}`}>
-                  {link.icon}
-                </span>
-                {link.name}
-              </Link>
-            ))}
-          </nav>
-          
-          <div className="pt-6 mt-6 border-t border-gray-200">
-            <h3 className="px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-              Support
-            </h3>
-            <nav className="mt-2 space-y-1">
-              {secondaryLinks.map((link) => (
-                <Link
-                  key={link.path}
-                  to={link.path}
-                  className="flex items-center px-4 py-3 text-sm font-medium text-gray-600 rounded-md hover:bg-gray-50 hover:text-gray-900"
-                >
-                  <span className="mr-3 text-gray-400">{link.icon}</span>
-                  {link.name}
-                </Link>
-              ))}
+          <div className="h-0 flex-1 flex flex-col overflow-y-auto pt-4">
+            <nav className="flex-1 px-2 space-y-1">
+              <NavItem href="/" icon={<Home size={18} />}>
+                Dashboard
+              </NavItem>
+              <NavItem href="/analysis" icon={<BarChart2 size={18} />}>
+                Analysis
+              </NavItem>
+              <NavItem href="/recommendations" icon={<Lightbulb size={18} />}>
+                Recommendations
+              </NavItem>
+              <NavItem href="/datasets" icon={<Database size={18} />}>
+                Datasets
+              </NavItem>
+              <NavItem href="/models" icon={<Brain size={18} />}>
+                Models
+              </NavItem>
+              <NavItem href="/settings" icon={<Settings size={18} />}>
+                Settings
+              </NavItem>
             </nav>
-          </div>
-        </div>
-        
-        <div className="p-4 border-t flex items-center justify-between">
-          <div className="flex items-center">
-            <div className="h-8 w-8 rounded-full bg-gray-300 flex items-center justify-center">
-              <span className="text-sm font-medium text-gray-700">U</span>
+            <div className="px-4 py-4 border-t border-gray-200">
+              <div className="flex items-center">
+                <Avatar className="h-8 w-8 bg-mind-blue-500 text-white">
+                  <AvatarFallback>JD</AvatarFallback>
+                </Avatar>
+                <div className="ml-3">
+                  <p className="text-sm font-medium text-gray-700">Dr. Jane Doe</p>
+                  <p className="text-xs text-gray-500">Clinical Psychologist</p>
+                </div>
+              </div>
             </div>
-            <div className="ml-3">
-              <p className="text-sm font-medium text-gray-700">User</p>
-              <p className="text-xs text-gray-500">Researcher</p>
-            </div>
           </div>
-          <button className="text-gray-400 hover:text-gray-500">
-            <LogOut className="h-5 w-5" />
-          </button>
         </div>
       </div>
-      
-      {/* Mobile header */}
-      <div className="md:hidden fixed top-0 left-0 right-0 z-10 bg-white border-b border-gray-200 p-4">
-        <div className="flex justify-between items-center">
-          <div className="flex items-center">
-            <Brain className="h-6 w-6 text-blue-600 mr-2" />
-            <h1 className="text-lg font-bold text-gray-900">MindBloom AI</h1>
-          </div>
-          <button className="text-gray-500 hover:text-gray-700">
-            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
-          </button>
-        </div>
-      </div>
-      
+
       {/* Main content */}
-      <div className="flex-1 overflow-auto">
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 py-6 md:py-8">
-          {children}
+      <div className="flex flex-col flex-1 overflow-hidden">
+        {/* Top navbar */}
+        <div className="relative z-10 flex-shrink-0 flex h-16 bg-white border-b border-gray-200">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="md:hidden px-4 text-gray-500"
+          >
+            <Menu size={24} />
+          </Button>
+          <div className="flex-1 flex justify-between px-4">
+            <div className="flex-1 flex items-center">
+              <div className="w-full max-w-2xl relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Input 
+                  placeholder="Search patients, datasets, or models" 
+                  className="pl-9 pr-3"
+                />
+              </div>
+            </div>
+            <div className="ml-4 flex items-center md:ml-6">
+              <Button variant="ghost" size="icon" className="text-gray-400 hover:text-gray-500">
+                <Bell size={20} />
+              </Button>
+              <Button variant="ghost" size="icon" className="ml-3 text-gray-400 hover:text-gray-500">
+                <HelpCircle size={20} />
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        {/* Main content area */}
+        <main className="flex-1 relative overflow-y-auto focus:outline-none bg-gray-50 brain-pattern-bg">
+          <div className="py-6 px-4 sm:px-6 lg:px-8">
+            {children}
+          </div>
         </main>
       </div>
     </div>

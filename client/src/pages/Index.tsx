@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import DashboardLayout from '@/components/DashboardLayout';
 import AnalysisSummaryCard from '@/components/dashboard/AnalysisSummaryCard';
@@ -15,10 +14,13 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/components/ui/sonner';
 import { runFullAnalysis } from '@/services/mockDataService';
+import { initTensorFlow } from '@/lib/tensorflow';
+import { Loader2 } from 'lucide-react';
 
 const Index = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<any>(null);
+  const [tfInitialized, setTfInitialized] = useState(false);
 
   const runAnalysis = async () => {
     setIsLoading(true);
@@ -38,6 +40,23 @@ const Index = () => {
   };
 
   useEffect(() => {
+    // Initialize TensorFlow.js
+    const initTF = async () => {
+      const result = await initTensorFlow();
+      if (result.success) {
+        setTfInitialized(true);
+        toast.success("TensorFlow.js Initialized", {
+          description: `Using backend: ${result.backend}`
+        });
+      } else {
+        toast.error("TensorFlow.js Initialization Failed", {
+          description: "Using fallback processing methods."
+        });
+      }
+    };
+    
+    initTF();
+    
     // Auto-run analysis on first load
     runAnalysis();
   }, []);
@@ -53,7 +72,7 @@ const Index = () => {
         >
           {isLoading ? (
             <>
-              <span className="animate-spin mr-2">⟳</span>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               Processing...
             </>
           ) : (
@@ -64,7 +83,7 @@ const Index = () => {
 
       {/* Dataset Upload Section */}
       <div className="mb-6">
-        <DatasetUpload />
+        <DatasetUpload onProcessComplete={() => runAnalysis()} />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">

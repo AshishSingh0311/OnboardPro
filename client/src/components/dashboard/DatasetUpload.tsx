@@ -1,309 +1,288 @@
-import React, { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { toast } from 'sonner';
-import { UploadCloud, FileText, Download, HelpCircle, FileSpreadsheet } from "lucide-react";
-import { processDataset } from '@/services/dataProcessingService';
-import { ProcessingResult } from '@/types/dataProcessing';
-import { downloadSampleDataset, downloadExcelTemplate, convertExcelToModma } from '@/services/sampleDatasetService';
+import { useState, useRef, useCallback } from 'react';
 import { 
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@radix-ui/react-tooltip";
+  Card, 
+  CardContent, 
+  CardHeader, 
+  CardTitle 
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
+import { 
+  Upload, 
+  Check, 
+  X, 
+  Loader2, 
+  FileText, 
+  AlertCircle 
+} from 'lucide-react';
+import { toast } from '@/components/ui/sonner';
+import { 
+  isSupportedFileType, 
+  createFileUploadState, 
+  uploadFile, 
+  FileUploadState 
+} from '@/services/fileUploadService';
+import { getFileTypeIcon } from '@/lib/utils';
 
-const DatasetUpload = () => {
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
-  const [processingResult, setProcessingResult] = useState<ProcessingResult | null>(null);
-  const [fusionType, setFusionType] = useState<'Early' | 'Late' | 'Attention'>('Attention');
+interface DatasetUploadProps {
+  onProcessComplete?: (success: boolean) => void;
+}
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setSelectedFile(e.target.files[0]);
-    }
-  };
-
-  const handleUpload = async () => {
-    if (!selectedFile) {
-      toast.error("No File Selected", {
-        description: "Please select a file to upload."
-      });
-      return;
-    }
-
-    setIsUploading(true);
-
-    try {
-      let dataToProcess = selectedFile;
-
-      // If it's an Excel file, convert it to MODMA JSON format first
-      if (selectedFile.name.endsWith('.xlsx') || selectedFile.name.endsWith('.xls')) {
-        try {
-          const modmaData = await convertExcelToModma(selectedFile);
-          const jsonBlob = new Blob([JSON.stringify(modmaData)], { type: 'application/json' });
-          dataToProcess = new File([jsonBlob], 'converted-excel.json', { type: 'application/json' });
-
-          toast.success("Excel File Converted", {
-            description: "Successfully converted Excel file to MODMA format."
-          });
-        } catch (convertError) {
-          console.error("Excel conversion error:", convertError);
-          toast.error("Conversion Error", {
-            description: `Failed to convert Excel file to MODMA format: ${convertError instanceof Error ? convertError.message : 'Unknown error'}`
-          });
-          setIsUploading(false);
-          return;
-        }
-      }
-
-      // Process the data with the selected fusion type
+const DatasetUpload = ({ onProcessComplete }: DatasetUploadProps) => {
+  const [uploads, setUploads] = useState<FileUploadState[]>([]);
+  const [processing, setProcessing] = useState(false);
+  const [processingProgress, setProcessingProgress] = useState(0);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  const handleFileSelect = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || []);
+    
+    if (files.length === 0) return;
+    
+    // Create upload states for each file
+    const newUploads = files.map(file => createFileUploadState(file));
+    setUploads(prevUploads => [...prevUploads, ...newUploads]);
+    
+    // Start uploading each file
+    for (const uploadState of newUploads) {
+      setUploads(prevUploads => 
+        prevUploads.map(u => 
+          u.id === uploadState.id 
+            ? { ...u, status: 'uploading' } 
+            : u
+        )
+      );
+      
       try {
-        const result = await processDataset(dataToProcess, fusionType);
-        setProcessingResult(result);
-
-        if (result.error) {
-          toast.error("Processing Error", {
-            description: result.error
-          });
-        } else {
-          toast.success("Processing Complete", {
-            description: "Dataset has been successfully processed."
-          });
+        // Validate file type
+        if (!isSupportedFileType(uploadState.file)) {
+          throw new Error(`Unsupported file type: ${uploadState.file.type}`);
         }
-      } catch (processError) {
-        console.error("Error during dataset processing:", processError);
-        toast.error("Processing Error", {
-          description: `An error occurred during dataset processing: ${processError instanceof Error ? processError.message : 'Unknown error'}`
+        
+        // Upload file
+        await uploadFile(uploadState.file, (progress) => {
+          setUploads(prevUploads => 
+            prevUploads.map(u => 
+              u.id === uploadState.id 
+                ? { ...u, progress } 
+                : u
+            )
+          );
+        });
+        
+        // Mark as complete
+        setUploads(prevUploads => 
+          prevUploads.map(u => 
+            u.id === uploadState.id 
+              ? { ...u, status: 'complete', progress: 100 } 
+              : u
+          )
+        );
+        
+        toast.success("File Uploaded", {
+          description: `${uploadState.file.name} has been uploaded successfully.`
+        });
+      } catch (error) {
+        // Handle error
+        setUploads(prevUploads => 
+          prevUploads.map(u => 
+            u.id === uploadState.id 
+              ? { 
+                  ...u, 
+                  status: 'error', 
+                  errorMessage: error instanceof Error ? error.message : 'Unknown error' 
+                } 
+              : u
+          )
+        );
+        
+        toast.error("Upload Failed", {
+          description: `Failed to upload ${uploadState.file.name}: ${error instanceof Error ? error.message : 'Unknown error'}`
         });
       }
-    } catch (error) {
-      console.error("Error processing dataset:", error);
-      toast.error("Unexpected Error", {
-        description: `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`
-      });
-    } finally {
-      setIsUploading(false);
     }
-  };
-
-  const handleDownloadResults = () => {
-    if (!processingResult) {
-      toast.error("No Results Available", {
-        description: "Please process a dataset first."
-      });
-      return;
+    
+    // Reset the file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
     }
-
-    if (processingResult.error) {
-      toast.error("Cannot Download", {
-        description: "There was an error during processing, cannot download results."
-      });
-      return;
-    }
-
-    // Create a JSON blob and download it
-    const jsonData = JSON.stringify(processingResult, null, 2);
-    const blob = new Blob([jsonData], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'mental-health-analysis-results.json';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-
-    toast.success("Results Downloaded", {
-      description: "Analysis results have been downloaded as JSON."
+  }, []);
+  
+  const handleDrop = useCallback((event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    
+    const items = Array.from(event.dataTransfer.items);
+    const files: File[] = [];
+    
+    items.forEach(item => {
+      if (item.kind === 'file') {
+        const file = item.getAsFile();
+        if (file) files.push(file);
+      }
     });
-  };
-
-  const handleDownloadSample = () => {
-    try {
-      downloadSampleDataset();
-      toast.success("Sample Dataset Generated", {
-        description: "A sample MODMA dataset has been downloaded."
-      });
-    } catch (error) {
-      toast.error("Download Failed", {
-        description: `Failed to generate the sample dataset: ${error instanceof Error ? error.message : 'Unknown error'}`
-      });
+    
+    if (files.length > 0) {
+      const dataTransfer = new DataTransfer();
+      files.forEach(file => dataTransfer.items.add(file));
+      
+      if (fileInputRef.current) {
+        fileInputRef.current.files = dataTransfer.files;
+        handleFileSelect({ target: { files: dataTransfer.files } } as React.ChangeEvent<HTMLInputElement>);
+      }
     }
-  };
-
-  const handleDownloadExcelTemplate = () => {
-    try {
-      downloadExcelTemplate();
-      toast.success("Excel Template Downloaded", {
-        description: "An Excel template has been downloaded. Fill it with your data and upload."
-      });
-    } catch (error) {
-      toast.error("Download Failed", {
-        description: `Failed to generate the Excel template: ${error instanceof Error ? error.message : 'Unknown error'}`
-      });
+  }, [handleFileSelect]);
+  
+  const handleDragOver = useCallback((event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+  }, []);
+  
+  const clearUploads = useCallback(() => {
+    setUploads([]);
+  }, []);
+  
+  const processData = useCallback(async () => {
+    setProcessing(true);
+    setProcessingProgress(0);
+    
+    // Simulate processing with progress updates
+    const steps = 20;
+    for (let i = 1; i <= steps; i++) {
+      await new Promise(resolve => setTimeout(resolve, 100));
+      setProcessingProgress((i / steps) * 100);
     }
-  };
-
+    
+    setTimeout(() => {
+      setProcessing(false);
+      setProcessingProgress(100);
+      
+      toast.success("Data Processed", {
+        description: "Files have been successfully processed and are ready for analysis."
+      });
+      
+      if (onProcessComplete) {
+        onProcessComplete(true);
+      }
+    }, 500);
+  }, [onProcessComplete]);
+  
+  const uploadEmpty = uploads.length === 0;
+  
   return (
-    <Card className="shadow-sm">
-      <CardHeader className="pb-3">
-        <CardTitle className="text-lg flex items-center">
-          Dataset Upload & Processing
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-6 w-6 ml-2">
-                  <HelpCircle className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p className="max-w-xs text-xs">
-                  Upload MODMA-format datasets containing EEG, audio, and text data. 
-                  Supported formats: JSON, CSV, EDF, and Excel (.xlsx).
-                  You can download templates to help you format your data.
-                </p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        </CardTitle>
+    <Card>
+      <CardHeader>
+        <CardTitle>Dataset Upload</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="mb-4">
-          <Button 
-              onClick={handleUpload}
-              disabled={!selectedFile || isUploading}
-              className="w-full bg-mind-blue-600 hover:bg-mind-blue-700 py-6 text-lg"
-              size="lg"
-            >
-              {isUploading ? (
-                <>
-                  <span className="animate-spin mr-2">⟳</span>
-                  Processing Dataset...
-                </>
-              ) : (
-                <>
-                  <FileText className="w-5 h-5 mr-2" />
-                  Start Dataset Processing
-                </>
-              )}
-            </Button>
+        <div className="text-sm text-muted-foreground mb-4">
+          Upload mental health data for analysis. Supported formats include EEG (.edf, .csv), 
+          audio (.wav, .mp3), text (.txt), and visual data (.jpg, .png).
         </div>
         
-        <div className="flex flex-col sm:flex-row gap-4 items-center">
-          <div className="w-full sm:w-1/2">
-            <div className="border-2 border-dashed border-gray-200 rounded-md p-6 text-center hover:border-gray-300 transition-all cursor-pointer bg-gray-50" onClick={() => document.getElementById('file-upload')?.click()}>
-              <UploadCloud className="mx-auto h-8 w-8 text-gray-400 mb-2" />
-              <p className="text-sm font-medium">
-                {selectedFile ? selectedFile.name : "Click to upload MODMA dataset"}
-              </p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Supports EEG, audio, and multimodal data files (.json, .csv, .edf, .xlsx)
-              </p>
-              <input 
-                id="file-upload" 
-                type="file" 
-                accept=".csv,.json,.edf,.xlsx,.xls" 
-                className="hidden" 
-                onChange={handleFileSelect}
-              />
-            </div>
-
-            <div className="flex flex-wrap gap-2 mt-3 mb-3">
-              <Button 
-                variant="outline"
-                size="sm"
-                onClick={handleDownloadSample}
-                className="flex-1"
-              >
-                <Download className="w-3 h-3 mr-1" />
-                Get Sample Dataset
-              </Button>
-              <Button 
-                variant="outline"
-                size="sm"
-                onClick={handleDownloadExcelTemplate}
-                className="flex-1"
-              >
-                <FileSpreadsheet className="w-3 h-3 mr-1" />
-                Excel Template
-              </Button>
-            </div>
-
-            {/* Fusion Type Selector */}
-            <div className="mt-3 mb-3">
-              <label className="text-sm font-medium">Fusion Method:</label>
-              <div className="grid grid-cols-3 gap-2 mt-1">
-                <Button 
-                  type="button" 
-                  variant={fusionType === 'Early' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setFusionType('Early')}
-                >
-                  Early
-                </Button>
-                <Button 
-                  type="button" 
-                  variant={fusionType === 'Late' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setFusionType('Late')}
-                >
-                  Late
-                </Button>
-                <Button 
-                  type="button" 
-                  variant={fusionType === 'Attention' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setFusionType('Attention')}
-                >
-                  Attention
-                </Button>
-              </div>
-            </div>
-
-            <Button 
-              onClick={handleUpload}
-              disabled={!selectedFile || isUploading}
-              className="w-full mt-3"
-            >
-              {isUploading ? (
-                <>
-                  <span className="animate-spin mr-2">⟳</span>
-                  Processing...
-                </>
-              ) : (
-                <>
-                  <FileText className="w-4 h-4 mr-2" />
-                  Process Dataset
-                </>
-              )}
-            </Button>
-          </div>
-
-          <div className="w-full sm:w-1/2 bg-gray-50 p-4 rounded-md">
-            <h4 className="font-medium text-sm mb-2">Processing Algorithm</h4>
-            <ol className="text-xs space-y-1 text-muted-foreground list-decimal list-inside">
-              <li>Validate dataset format & quality</li>
-              <li>Extract EEG (128-channel & 3-channel) features</li>
-              <li>Extract audio features</li>
-              <li>Apply fusion method ({fusionType})</li>
-              <li>Generate predictions with hybrid model</li>
-              <li>Explain results with SHAP</li>
-            </ol>
-
-            {processingResult && !processingResult.error && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="mt-3 w-full"
-                onClick={handleDownloadResults}
-              >
-                <Download className="w-3 h-3 mr-1" />
-                Download Results
-              </Button>
+        <div className="mb-4">
+          <Button
+            onClick={processData}
+            disabled={processing || uploads.length === 0 || uploads.some(u => u.status === 'uploading')}
+            className="w-full bg-mind-blue-600 hover:bg-mind-blue-700 py-6 text-lg"
+            size="lg"
+          >
+            {processing ? (
+              <>
+                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                Processing Dataset ({Math.round(processingProgress)}%)
+              </>
+            ) : (
+              'Start Dataset Processing'
             )}
+          </Button>
+        </div>
+        
+        <div className="flex flex-col sm:flex-row gap-4">
+          <div 
+            className={`flex-1 border-2 border-dashed rounded-lg p-6 flex flex-col justify-center items-center
+              ${uploadEmpty ? 'border-gray-300' : 'border-gray-200'} 
+              hover:border-primary/50 transition-colors cursor-pointer`}
+            onClick={() => fileInputRef.current?.click()}
+            onDrop={handleDrop}
+            onDragOver={handleDragOver}
+          >
+            <input 
+              ref={fileInputRef}
+              type="file" 
+              className="hidden" 
+              multiple 
+              onChange={handleFileSelect}
+            />
+            
+            <Upload className="h-10 w-10 text-gray-400 mb-3" />
+            <p className="text-sm text-gray-500 text-center">
+              <span className="font-medium text-primary">Click to upload</span> or drag and drop<br />
+              EEG, audio, text, and visual files
+            </p>
+          </div>
+          
+          <div className="sm:w-1/3 bg-gray-50 rounded-lg p-4 border border-gray-200">
+            <h4 className="text-sm font-medium text-gray-900 mb-2">Upload Status</h4>
+            
+            {uploadEmpty ? (
+              <div className="text-center py-4">
+                <p className="text-gray-500 text-sm">No files uploaded yet</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div className="flex justify-between text-xs text-gray-700">
+                  <span>
+                    Uploading files ({uploads.filter(u => u.status === 'complete').length}/{uploads.length})
+                  </span>
+                  <span>
+                    {Math.round(
+                      uploads.reduce((sum, u) => sum + u.progress, 0) / uploads.length
+                    )}%
+                  </span>
+                </div>
+                <Progress 
+                  value={uploads.reduce((sum, u) => sum + u.progress, 0) / uploads.length} 
+                  className="h-2 bg-gray-200"
+                />
+                
+                <div className="space-y-2 mt-3 max-h-40 overflow-y-auto">
+                  {uploads.map(upload => (
+                    <div key={upload.id} className="flex items-center justify-between text-xs">
+                      <div className="flex items-center">
+                        {upload.status === 'complete' && <Check className="text-green-500 h-4 w-4 mr-1" />}
+                        {upload.status === 'uploading' && <Loader2 className="text-blue-500 h-4 w-4 mr-1 animate-spin" />}
+                        {upload.status === 'error' && <AlertCircle className="text-red-500 h-4 w-4 mr-1" />}
+                        {upload.status === 'pending' && <FileText className="text-gray-500 h-4 w-4 mr-1" />}
+                        <span className={upload.status === 'error' ? 'text-red-500' : ''}>
+                          {upload.file.name}
+                        </span>
+                      </div>
+                      <span className={
+                        upload.status === 'complete' ? 'text-green-500' : 
+                        upload.status === 'error' ? 'text-red-500' : 
+                        'text-blue-500'
+                      }>
+                        {upload.status === 'complete' ? 'Complete' : 
+                         upload.status === 'error' ? 'Failed' : 
+                         upload.status === 'uploading' ? 'Uploading' : 'Pending'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            <div className="mt-3">
+              {uploads.length > 0 && (
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="text-xs text-gray-500 hover:text-gray-700"
+                  onClick={clearUploads}
+                >
+                  Clear all uploads
+                </Button>
+              )}
+            </div>
           </div>
         </div>
       </CardContent>

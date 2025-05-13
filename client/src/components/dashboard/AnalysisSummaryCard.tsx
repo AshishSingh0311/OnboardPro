@@ -1,109 +1,118 @@
-
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
-import { ModelOutput } from "@/types/analysis";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { ModelOutput } from '@/services/mockDataService';
+import { getSeverityLabel, formatPercentage } from '@/lib/utils';
 
 interface AnalysisSummaryCardProps {
   modelOutput: ModelOutput;
-  isLoading?: boolean;
+  isLoading: boolean;
 }
 
-const AnalysisSummaryCard: React.FC<AnalysisSummaryCardProps> = ({ modelOutput, isLoading = false }) => {
-  const getSeverityColor = (severity: number) => {
-    if (severity < 3) return "text-mind-green-500";
-    if (severity < 7) return "text-amber-500";
-    return "text-mind-red-500";
-  };
+const AnalysisSummaryCard: React.FC<AnalysisSummaryCardProps> = ({ 
+  modelOutput, 
+  isLoading 
+}) => {
+  // Get severity label (Mild, Moderate, Severe)
+  const severityLabel = getSeverityLabel(modelOutput.severity);
   
+  // Get badge variant based on severity
+  const badgeVariant = 
+    modelOutput.severity < 3 ? "outline" : 
+    modelOutput.severity < 7 ? "secondary" : 
+    "destructive";
+  
+  // Get sorted feature importance entries
+  const sortedFeatures = Object.entries(modelOutput.featureImportance)
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 4);
+  
+  if (isLoading) {
+    return (
+      <Card>
+        <CardHeader className="pb-2">
+          <div className="flex justify-between items-center">
+            <Skeleton className="h-8 w-40" />
+            <Skeleton className="h-6 w-24" />
+          </div>
+        </CardHeader>
+        <CardContent>
+          <Skeleton className="h-7 w-56 mb-2" />
+          <Skeleton className="h-5 w-full mb-5" />
+          
+          <Skeleton className="h-32 w-full mb-4" />
+          
+          <Skeleton className="h-6 w-48 mb-3" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <Skeleton className="h-16 w-full" />
+            <Skeleton className="h-16 w-full" />
+            <Skeleton className="h-16 w-full" />
+            <Skeleton className="h-16 w-full" />
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
-    <Card className="shadow-md">
+    <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="text-lg flex justify-between items-center">
+        <CardTitle className="flex justify-between items-center">
           <span>Analysis Summary</span>
-          <span className="text-sm font-normal bg-mind-blue-50 text-mind-blue-700 px-2 py-1 rounded-full">
-            {isLoading ? "Analyzing..." : "Confidence: " + (modelOutput.confidence * 100).toFixed(1) + "%"}
-          </span>
+          <Badge className="ml-2" variant={badgeVariant}>
+            {severityLabel}
+          </Badge>
         </CardTitle>
       </CardHeader>
       <CardContent>
-        {isLoading ? (
-          <div className="space-y-4 animate-pulse">
-            <div className="h-6 bg-gray-200 rounded"></div>
-            <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-            <div className="h-4 bg-gray-200 rounded"></div>
-            <div className="h-10 bg-gray-200 rounded"></div>
+        <div className="text-xl font-medium mb-2">{modelOutput.prediction.label}</div>
+        <div className="text-muted-foreground mb-4">
+          Condition detected based on multimodal data analysis with {formatPercentage(modelOutput.confidence)} confidence.
+        </div>
+        
+        <div className="bg-blue-50 border border-blue-100 rounded-md p-4 mb-4">
+          <h3 className="text-md font-medium mb-2 text-blue-800">Clinical Insights</h3>
+          <p className="text-sm text-blue-700 mb-2">
+            Based on the multimodal analysis, the following patterns were detected:
+          </p>
+          <ul className="list-disc list-inside text-sm text-blue-700 space-y-1">
+            <li>
+              {modelOutput.attention.eeg > 0.7 
+                ? "Significant EEG anomalies in frontal lobe activity" 
+                : "Minimal EEG pattern variations from baseline"}
+            </li>
+            <li>
+              {modelOutput.attention.audio > 0.7 
+                ? "Notable speech pattern irregularities detected" 
+                : "Speech patterns show typical variations"}
+            </li>
+            <li>
+              {modelOutput.attention.text > 0.7 
+                ? "Text analysis reveals concerning emotional patterns" 
+                : "Text sentiment shows moderate emotional variability"}
+            </li>
+            <li>
+              {modelOutput.attention.visual > 0.7 
+                ? "Facial expressions indicate significant emotional distress" 
+                : "Facial expressions show typical emotional responses"}
+            </li>
+          </ul>
+        </div>
+        
+        <div>
+          <h3 className="text-md font-medium mb-2">Key Contributing Factors</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+            {sortedFeatures.map(([feature, importance], idx) => (
+              <div key={idx} className="bg-gray-50 p-3 rounded-md flex justify-between items-center">
+                <span className="capitalize">{feature.replace(/_/g, ' ')}</span>
+                <Badge variant="secondary" className="ml-2">
+                  {formatPercentage(importance, 0)} impact
+                </Badge>
+              </div>
+            ))}
           </div>
-        ) : (
-          <>
-            <div className="mb-4">
-              <div className="text-xl font-medium">{modelOutput.prediction.label}</div>
-              <div className="text-sm text-muted-foreground">
-                Predicted with {(modelOutput.prediction.probability * 100).toFixed(1)}% probability
-              </div>
-            </div>
-            
-            <div className="mb-6">
-              <div className="flex justify-between mb-2">
-                <span className="text-sm font-medium">Severity Assessment</span>
-                <span className={`text-sm font-medium ${getSeverityColor(modelOutput.severity)}`}>
-                  {modelOutput.severity.toFixed(1)}/10
-                </span>
-              </div>
-              <Progress 
-                value={modelOutput.severity * 10} 
-                className="h-2" 
-                indicatorClassName={`
-                  ${modelOutput.severity < 3 ? "bg-mind-green-500" : ""}
-                  ${modelOutput.severity >= 3 && modelOutput.severity < 7 ? "bg-amber-500" : ""}
-                  ${modelOutput.severity >= 7 ? "bg-mind-red-500" : ""}
-                `}
-              />
-            </div>
-            
-            <div>
-              <div className="text-sm font-medium mb-2">Modality Contribution</div>
-              <div className="grid grid-cols-4 gap-2">
-                <div className="text-center">
-                  <div className="h-20 flex items-end">
-                    <div 
-                      className="w-full bg-mind-blue-400 rounded-t" 
-                      style={{height: `${modelOutput.attention.eeg * 100}%`}}
-                    ></div>
-                  </div>
-                  <div className="text-xs mt-1">EEG</div>
-                </div>
-                <div className="text-center">
-                  <div className="h-20 flex items-end">
-                    <div 
-                      className="w-full bg-mind-green-400 rounded-t" 
-                      style={{height: `${modelOutput.attention.audio * 100}%`}}
-                    ></div>
-                  </div>
-                  <div className="text-xs mt-1">Audio</div>
-                </div>
-                <div className="text-center">
-                  <div className="h-20 flex items-end">
-                    <div 
-                      className="w-full bg-purple-400 rounded-t" 
-                      style={{height: `${modelOutput.attention.text * 100}%`}}
-                    ></div>
-                  </div>
-                  <div className="text-xs mt-1">Text</div>
-                </div>
-                <div className="text-center">
-                  <div className="h-20 flex items-end">
-                    <div 
-                      className="w-full bg-amber-400 rounded-t" 
-                      style={{height: `${modelOutput.attention.visual * 100}%`}}
-                    ></div>
-                  </div>
-                  <div className="text-xs mt-1">Visual</div>
-                </div>
-              </div>
-            </div>
-          </>
-        )}
+        </div>
       </CardContent>
     </Card>
   );

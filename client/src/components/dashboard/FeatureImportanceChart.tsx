@@ -1,91 +1,77 @@
-
-import React, { useMemo } from 'react';
+import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { ModelOutput } from "@/types/analysis";
+import { Skeleton } from "@/components/ui/skeleton";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { ModelOutput } from '@/services/mockDataService';
+import { formatPercentage } from '@/lib/utils';
 
 interface FeatureImportanceChartProps {
   modelOutput: ModelOutput;
-  isLoading?: boolean;
+  isLoading: boolean;
 }
 
-const FeatureImportanceChart: React.FC<FeatureImportanceChartProps> = ({ modelOutput, isLoading = false }) => {
-  // Transform the feature importance data for Recharts
-  const chartData = useMemo(() => {
-    if (!modelOutput.featureImportance) return [];
-    
-    return Object.entries(modelOutput.featureImportance)
-      .map(([feature, importance]) => ({
-        feature: feature.replace(/_/g, ' '),
-        importance
-      }))
-      .sort((a, b) => b.importance - a.importance);
-  }, [modelOutput.featureImportance]);
+const FeatureImportanceChart: React.FC<FeatureImportanceChartProps> = ({ modelOutput, isLoading }) => {
+  // Transform feature importance data for visualization
+  const chartData = Object.entries(modelOutput.featureImportance)
+    .sort(([, a], [, b]) => b - a)
+    .map(([feature, importance]) => ({
+      name: feature.replace(/_/g, ' '),
+      importance: importance * 100
+    }));
   
-  const getFeatureColor = (feature: string) => {
-    if (feature.includes('eeg') || feature.includes('alpha') || feature.includes('beta') || 
-        feature.includes('gamma') || feature.includes('theta') || feature.includes('delta')) {
-      return "#3498db";
-    } else if (feature.includes('speech') || feature.includes('voice') || feature.includes('audio')) {
-      return "#2ecc71";
-    } else if (feature.includes('text') || feature.includes('sentiment')) {
-      return "#9b59b6";
-    } else if (feature.includes('facial') || feature.includes('eye')) {
-      return "#f39c12";
-    }
-    return "#95a5a6";
-  };
-  
+  if (isLoading) {
+    return (
+      <Card>
+        <CardHeader>
+          <Skeleton className="h-7 w-48" />
+        </CardHeader>
+        <CardContent>
+          <Skeleton className="h-56 w-full" />
+          <Skeleton className="h-4 w-full mt-4" />
+          <Skeleton className="h-4 w-5/6 mt-2" />
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
-    <Card className="shadow-md">
-      <CardHeader className="pb-2">
-        <CardTitle className="text-lg">Feature Importance (SHAP Values)</CardTitle>
+    <Card>
+      <CardHeader>
+        <CardTitle>Feature Importance</CardTitle>
       </CardHeader>
       <CardContent>
-        {isLoading ? (
-          <div className="h-[300px] w-full flex items-center justify-center bg-gray-50 rounded-md">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-mind-blue-500 mx-auto"></div>
-              <p className="mt-2 text-sm text-gray-500">Calculating feature importance...</p>
-            </div>
-          </div>
-        ) : (
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart
-              data={chartData}
-              layout="vertical"
-              margin={{
-                top: 5,
-                right: 30,
-                left: 100,
-                bottom: 5,
-              }}
-            >
-              <CartesianGrid strokeDasharray="3 3" opacity={0.2} horizontal={false} />
-              <XAxis 
-                type="number" 
-                domain={[0, 1]}
-                tickFormatter={(value) => value.toFixed(2)}
-              />
-              <YAxis 
-                type="category" 
-                dataKey="feature"
-                tick={{ fontSize: 12 }}
-              />
-              <Tooltip 
-                formatter={(value) => [`Impact: ${Number(value).toFixed(3)}`, ""]}
-                contentStyle={{ fontSize: '12px' }}
-              />
-              <Bar 
-                dataKey="importance" 
-                fill="#3498db" 
-                radius={[0, 4, 4, 0]}
-                barSize={20}
-                name="Feature Impact"
-              />
-            </BarChart>
-          </ResponsiveContainer>
-        )}
+        <ResponsiveContainer width="100%" height={250}>
+          <BarChart
+            data={chartData}
+            layout="vertical"
+            margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+          >
+            <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+            <XAxis type="number" domain={[0, 100]} tickFormatter={(value) => `${value}%`} />
+            <YAxis 
+              type="category" 
+              dataKey="name" 
+              width={100}
+              tick={{ fontSize: 12 }}
+              tickFormatter={(value) => value.length > 15 ? `${value.substring(0, 15)}...` : value}
+            />
+            <Tooltip 
+              formatter={(value) => [`${value}%`, "Importance"]} 
+              labelFormatter={(label) => `Feature: ${label}`}
+            />
+            <Bar 
+              dataKey="importance" 
+              name="Importance" 
+              fill="#3498db" 
+              radius={[0, 4, 4, 0]} 
+            />
+          </BarChart>
+        </ResponsiveContainer>
+        
+        <div className="mt-4 text-xs text-muted-foreground">
+          <p>This chart shows the relative importance of each feature in the model's prediction. 
+          Higher values indicate greater influence on the outcome.</p>
+        </div>
       </CardContent>
     </Card>
   );

@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import DashboardLayout from '@/components/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -250,41 +249,39 @@ const Analysis = () => {
                     <h3 className="text-md font-medium mb-2">BERT Embeddings</h3>
                     <p className="text-sm text-gray-600">
                       Bidirectional Encoder Representations from Transformers (BERT) captures context-dependent semantic relationships in text. 
-                      The model uses attention mechanisms to understand the relationship between words.
+                      These embeddings help identify subtle linguistic markers of mental health conditions.
                     </p>
                   </div>
                   
-                  <div>
-                    <h3 className="text-md font-medium mb-2">NLP Features for Mental Health</h3>
-                    <div className="grid grid-cols-2 gap-3 text-sm">
-                      <div className="bg-blue-50 p-2 rounded">
-                        <span className="font-medium">Lexical Diversity</span>
-                        <p className="text-xs text-gray-600">Decreased in depression</p>
-                      </div>
-                      <div className="bg-blue-50 p-2 rounded">
-                        <span className="font-medium">Self-References</span>
-                        <p className="text-xs text-gray-600">Increased "I" in anxiety</p>
-                      </div>
-                      <div className="bg-blue-50 p-2 rounded">
-                        <span className="font-medium">Absolutist Words</span>
-                        <p className="text-xs text-gray-600">Higher in suicidal ideation</p>
-                      </div>
-                      <div className="bg-blue-50 p-2 rounded">
-                        <span className="font-medium">Negative Emotion</span>
-                        <p className="text-xs text-gray-600">Frequency of negative terms</p>
-                      </div>
+                  <div className="bg-gray-50 p-3 rounded-md">
+                    <h3 className="text-md font-medium mb-2">Key Phrases Detected</h3>
+                    <div className="flex flex-wrap gap-2">
+                      {textAnalysis.keyPhrases.map((phrase, idx) => (
+                        <span key={idx} className="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded">
+                          {phrase}
+                        </span>
+                      ))}
                     </div>
                   </div>
                   
                   <div>
-                    <h3 className="text-md font-medium mb-2">Clinical NLP Pipeline</h3>
-                    <ol className="list-decimal list-inside space-y-1 text-sm text-gray-600">
-                      <li>Text preprocessing (tokenization, normalization)</li>
-                      <li>Feature extraction (TF-IDF, n-grams, embeddings)</li>
-                      <li>Contextual understanding via transformers</li>
-                      <li>Emotion classification and sentiment analysis</li>
-                      <li>Integration with multimodal data</li>
-                    </ol>
+                    <h3 className="text-md font-medium mb-2">Topic Distribution</h3>
+                    <div className="space-y-2">
+                      {Object.entries(textAnalysis.topics).map(([topic, value], idx) => (
+                        <div key={idx}>
+                          <div className="flex justify-between text-xs text-gray-600 mb-1">
+                            <span>{topic}</span>
+                            <span>{(value * 100).toFixed(1)}%</span>
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-1.5">
+                            <div 
+                              className="bg-mind-blue-500 h-1.5 rounded-full" 
+                              style={{ width: `${value * 100}%` }}
+                            ></div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
               </CardContent>
@@ -300,43 +297,37 @@ const Analysis = () => {
               </CardHeader>
               <CardContent>
                 <div className="flex justify-center">
-                  <div className="w-full max-w-md">
-                    <ResponsiveContainer width="100%" height={300}>
-                      <RadarChart outerRadius={90} data={expressionData}>
-                        <PolarGrid />
-                        <PolarAngleAxis dataKey="subject" />
-                        <PolarRadiusAxis angle={30} domain={[0, 1]} />
-                        <Radar
-                          name="Facial Expressions"
-                          dataKey="A"
-                          stroke="#8884d8"
-                          fill="#8884d8"
-                          fillOpacity={0.6}
-                        />
-                        <Tooltip />
-                        <Legend />
-                      </RadarChart>
-                    </ResponsiveContainer>
-                  </div>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <RadarChart outerRadius={90} data={expressionData}>
+                      <PolarGrid />
+                      <PolarAngleAxis dataKey="subject" />
+                      <PolarRadiusAxis angle={30} domain={[0, 1]} />
+                      <Radar
+                        name="Expression Intensity"
+                        dataKey="A"
+                        stroke="#3498db"
+                        fill="#3498db"
+                        fillOpacity={0.6}
+                      />
+                      <Tooltip formatter={(value) => [`${Number(value).toFixed(2)}`, ""]} />
+                      <Legend />
+                    </RadarChart>
+                  </ResponsiveContainer>
                 </div>
-                <div className="mt-4">
-                  <h3 className="text-md font-medium mb-2">Visual Analysis Methods</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-                    <div className="bg-gray-50 p-3 rounded">
-                      <span className="font-medium block mb-1">Face Detection</span>
-                      <p>MediaPipe or OpenFace for robust real-time face detection and landmark tracking</p>
+                <div className="mt-4 bg-gray-50 p-3 rounded border border-gray-200">
+                  <h4 className="font-medium mb-1">Eye Movement Metrics</h4>
+                  <div className="grid grid-cols-3 gap-2 text-sm">
+                    <div className="bg-white p-2 rounded shadow-sm text-center">
+                      <div className="text-gray-500 text-xs">Fixations</div>
+                      <div className="font-medium">{visualFeatures.eyeMovements.fixations.toFixed(1)}</div>
                     </div>
-                    <div className="bg-gray-50 p-3 rounded">
-                      <span className="font-medium block mb-1">Expression Recognition</span>
-                      <p>CNN-based model trained on FER2013 and extended with transfer learning</p>
+                    <div className="bg-white p-2 rounded shadow-sm text-center">
+                      <div className="text-gray-500 text-xs">Saccades</div>
+                      <div className="font-medium">{visualFeatures.eyeMovements.saccades.toFixed(1)}</div>
                     </div>
-                    <div className="bg-gray-50 p-3 rounded">
-                      <span className="font-medium block mb-1">Eye Tracking</span>
-                      <p>Analysis of saccadic eye movements and gaze patterns</p>
-                    </div>
-                    <div className="bg-gray-50 p-3 rounded">
-                      <span className="font-medium block mb-1">Micro-expression Detection</span>
-                      <p>Temporal difference analysis for subtle facial movements</p>
+                    <div className="bg-white p-2 rounded shadow-sm text-center">
+                      <div className="text-gray-500 text-xs">Dwell Time</div>
+                      <div className="font-medium">{visualFeatures.eyeMovements.dwellTime.toFixed(2)}s</div>
                     </div>
                   </div>
                 </div>
@@ -345,61 +336,36 @@ const Analysis = () => {
             
             <Card>
               <CardHeader>
-                <CardTitle>Visual Biomarkers for Mental Health</CardTitle>
+                <CardTitle>Visual Analysis Methods</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  <p className="text-sm text-gray-600">
-                    Visual biomarkers extracted from facial expressions, eye movements, and physical behaviors
-                    provide important indicators for mental health assessment. These non-verbal cues often reveal
-                    emotional states that may not be consciously expressed.
-                  </p>
-                  
                   <div>
-                    <h3 className="text-md font-medium mb-2">Key Visual Indicators</h3>
-                    <div className="overflow-x-auto">
-                      <table className="min-w-full text-sm">
-                        <thead>
-                          <tr className="bg-gray-50">
-                            <th className="px-4 py-2 text-left">Biomarker</th>
-                            <th className="px-4 py-2 text-left">Associated Condition</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-100">
-                          <tr>
-                            <td className="px-4 py-2">Reduced smile intensity</td>
-                            <td className="px-4 py-2">Depression</td>
-                          </tr>
-                          <tr>
-                            <td className="px-4 py-2">Increased blink rate</td>
-                            <td className="px-4 py-2">Anxiety</td>
-                          </tr>
-                          <tr>
-                            <td className="px-4 py-2">Asymmetrical expressions</td>
-                            <td className="px-4 py-2">Various disorders</td>
-                          </tr>
-                          <tr>
-                            <td className="px-4 py-2">Reduced expression variability</td>
-                            <td className="px-4 py-2">Schizophrenia spectrum</td>
-                          </tr>
-                          <tr>
-                            <td className="px-4 py-2">Delayed emotional responses</td>
-                            <td className="px-4 py-2">Emotional processing issues</td>
-                          </tr>
-                        </tbody>
-                      </table>
-                    </div>
+                    <h3 className="text-md font-medium mb-2">Computer Vision Techniques</h3>
+                    <p className="text-sm text-gray-600">
+                      We use deep learning models to extract facial landmarks, analyze micro-expressions, 
+                      and track eye movements that may indicate various mental health conditions.
+                    </p>
                   </div>
                   
-                  <div className="bg-blue-50 p-3 rounded">
-                    <h3 className="text-md font-medium mb-1">Visual Processing Pipeline</h3>
-                    <ol className="list-decimal list-inside text-sm text-gray-600 space-y-1">
-                      <li>Frame extraction and preprocessing</li>
-                      <li>Face detection and alignment</li>
-                      <li>Landmark extraction (68-point model)</li>
-                      <li>Feature computation (distances, angles)</li>
-                      <li>Expression classification with CNNs</li>
-                      <li>Temporal analysis across video frames</li>
+                  <div className="bg-gray-50 p-3 rounded-md">
+                    <h3 className="text-md font-medium mb-2">Clinical Correlates</h3>
+                    <ul className="list-disc list-inside text-sm text-gray-600 space-y-1">
+                      <li>Reduced expression variation may indicate depression</li>
+                      <li>Increased blinking and scanning behaviors linked to anxiety</li>
+                      <li>Asymmetrical expressions may suggest neurological factors</li>
+                      <li>Diminished emotional reactivity in certain conditions</li>
+                    </ul>
+                  </div>
+                  
+                  <div className="bg-blue-50 p-3 rounded border border-blue-100">
+                    <h3 className="text-md font-medium mb-2 text-blue-800">Processing Pipeline</h3>
+                    <ol className="list-decimal list-inside text-sm text-blue-700 space-y-1">
+                      <li>Facial detection and alignment</li>
+                      <li>Landmark extraction (68 points)</li>
+                      <li>Expression classification</li>
+                      <li>Eye movement tracking</li>
+                      <li>Feature fusion with other modalities</li>
                     </ol>
                   </div>
                 </div>
@@ -408,6 +374,15 @@ const Analysis = () => {
           </div>
         </TabsContent>
       </Tabs>
+      
+      <div className="mt-6 bg-gray-50 p-4 rounded-md text-sm text-gray-600">
+        <p className="font-medium mb-1">About Multimodal Analysis</p>
+        <p>
+          Our approach combines multiple data modalities (EEG, audio, text, and visual) to create a comprehensive 
+          assessment of mental health status. This multimodal fusion allows for more accurate detection of subtle 
+          patterns that might be missed when analyzing a single data type in isolation.
+        </p>
+      </div>
     </DashboardLayout>
   );
 };
